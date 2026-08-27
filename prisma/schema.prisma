@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Table and column names are mapped to snake_case so the storage-plane assertions
+// query the same names a human would write by hand.
+
+model Tenant {
+  id       String    @id
+  name     String
+  users    User[]
+  orders   Order[]
+  invoices Invoice[]
+  reports  Report[]
+
+  @@map("tenants")
+}
+
+model User {
+  id       String @id
+  email    String @unique
+  name     String
+  role     String @default("member")
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("users")
+}
+
+model Order {
+  id            String @id
+  reference     String
+  customerEmail String @map("customer_email")
+  amountCents   Int    @map("amount_cents")
+  status        String @default("open")
+  tenantId      String @map("tenant_id")
+  tenant        Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("orders")
+}
+
+model Invoice {
+  id         String @id
+  number     String
+  taxId      String @map("tax_id")
+  totalCents Int    @map("total_cents")
+  tenantId   String @map("tenant_id")
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("invoices")
+}
+
+model Report {
+  id       String @id
+  title    String
+  body     String
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("reports")
+}

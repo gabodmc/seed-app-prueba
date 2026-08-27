@@ -1,0 +1,188 @@
+# Criterios de aceptación ejecutables para la app semilla.
+#
+# Capa `invariants`: lo que el cliente firma. Castellano, con severidad e impacto.
+# Capa `bindings`:   cómo se vuelve ejecutable contra un commit. Regenerable.
+#
+# Diez invariantes: cinco apuntan a fallas plantadas y cinco a controles sanos.
+# Ver seed-app/GROUND_TRUTH.md.
+ir_version: 1
+domain: tenant_isolation
+
+invariants:
+  # ── Fallas plantadas: se espera que estas fallen ─────────────────────────────
+  - id: INV-001
+    statement: "Un miembro de un tenant nunca puede leer un pedido de otro tenant."
+    class: cross_tenant_read
+    severity: critical
+    business_impact: "Cualquier cliente podría ver los pedidos y los correos de los clientes de otro."
+    verification_method: access_control
+    subject: { principal: tenant_a_member }
+    predicate: { operation: read, resource: order, owner: tenant_b }
+    condition:
+      http:
+        status_in: [403, 404]
+      storage:
+        foreign_tenant_rows_read: 0
+
+  - id: INV-002
+    statement: "Un miembro de un tenant nunca puede modificar un pedido de otro tenant."
+    class: cross_tenant_write
+    severity: critical
+    business_impact: "Un cliente podría alterar el estado de los pedidos de otro, con impacto contable."
+    verification_method: access_control
+    subject: { principal: tenant_a_member }
+    predicate: { operation: update, resource: order, owner: tenant_b }
+    condition:
+      http:
+        status_in: [403, 404]
+      storage:
+        foreign_tenant_rows_mutated: 0
+
+  - id: INV-003
+    statement: "El listado de facturas solo devuelve facturas del tenant que consulta."
+    class: cross_tenant_list
+    severity: critical
+    business_impact: "Exposición masiva de CUIT y montos facturados de todas las cuentas."
+    verification_method: access_control
+    subject: { principal: tenant_a_member }
+    predicate: { operation: list, resource: invoice, owner: tenant_b }
+    condition:
+      http:
+        status_in: [200]
+      storage:
+        foreign_tenant_rows_read: 0
+
+  - id: INV-004
+    statement: "Un usuario sin rol de administrador no puede listar usuarios."
+    class: privilege_escalation
+    severity: critical
+    business_impact: "Cualquier usuario obtiene el padrón completo de usuarios y correos."
+    verification_method: access_control
+    subject: { principal: tenant_b_member }
+    predicate: { operation: list, resource: user, owner: tenant_a }
+    condition:
+      http:
+        status_in: [403]
+      storage:
+        foreign_tenant_rows_read: 0
+
+  - id: INV-005
+    statement: "Un visitante sin autenticar no puede leer ningún reporte."
+    class: unauthenticated_access
+    severity: critical
+    business_impact: "Contenido interno accesible desde internet sin credenciales."
+    verification_method: access_control
+    subject: { principal: anonymous }
+    predicate: { operation: read, resource: report, owner: tenant_b }
+    condition:
+      http:
+        status_in: [401, 403, 404]
+      storage:
+        foreign_tenant_rows_read: 0
+
+  # ── Controles sanos: se espera que estas pasen ───────────────────────────────
+  - id: INV-006
+    statement: "Un miembro de un tenant nunca puede leer una factura de otro tenant."
+    class: cross_tenant_read
+    severity: critical
+    business_impact: "Exposición de datos fiscales entre cuentas."
+    verification_method: access_control
+    subject: { principal: tenant_a_member }
+    predicate: { operation: read, resource: invoice, owner: tenant_b }
+    condition:
+      http:
+        status_in: [403, 404]
+      storage:
+        foreign_tenant_rows_read: 0
+
+  - id: INV-007
+    statement: "Un miembro de un tenant nunca puede borrar un pedido de otro tenant."
+    class: cross_tenant_write
+    severity: critical
+    business_impact: "Pérdida de datos de un cliente provocada por otro."
+    verification_method: access_control
+    subject: { principal: tenant_a_member }
+    predicate: { operation: delete, resource: order, owner: tenant_b }
+    condition:
+      http:
+        status_in: [403, 404]
+      storage:
+        foreign_tenant_rows_mutated: 0
+
+  - id: INV-008
+    statement: "El listado de pedidos solo devuelve pedidos del tenant que consulta."
+    class: cross_tenant_list
+    severity: high
+    business_impact: "Exposición de la cartera de pedidos de otras cuentas."
+    verification_method: access_control
+    subject: { principal: tenant_a_member }
+    predicate: { operation: list, resource: order, owner: tenant_b }
+    condition:
+      http:
+        status_in: [200]
+      storage:
+        foreign_tenant_rows_read: 0
+
+  - id: INV-009
+    statement: "Un visitante sin autenticar no puede consultar el perfil de ningún usuario."
+    class: unauthenticated_access
+    severity: high
+    business_impact: "Filtración de identidades de usuarios sin credenciales."
+    verification_method: access_control
+    subject: { principal: anonymous }
+    predicate: { operation: list, resource: profile, owner: tenant_a }
+    condition:
+      http:
+        status_in: [401, 403]
+      storage:
+        foreign_tenant_rows_read: 0
+
+  - id: INV-010
+    statement: "Un usuario sin rol de administrador no puede usar el listado administrativo de pedidos."
+    class: privilege_escalation
+    severity: high
+    business_impact: "Un usuario común accede a vistas privilegiadas de su cuenta y de otras."
+    verification_method: access_control
+    subject: { principal: tenant_b_member }
+    predicate: { operation: list, resource: admin_order, owner: tenant_a }
+    condition:
+      http:
+        status_in: [403]
+      storage:
+        foreign_tenant_rows_read: 0
+
+bindings:
+  commit: HEAD
+  fixtures: src/seed.js
+  principals:
+    - id: tenant_a_member
+      tenant: tenant_a
+      role: member
+      auth: { kind: bearer, fixture: users.user_alice }
+    - id: tenant_b_member
+      tenant: tenant_b
+      role: member
+      auth: { kind: bearer, fixture: users.user_bob }
+    - id: anonymous
+      tenant: public
+      role: anonymous
+      auth: { kind: none, fixture: none }
+  resources:
+    - id: order
+      http: { collection: /api/orders, item: "/api/orders/{id}" }
+      storage: { table: orders, tenant_column: tenant_id }
+    - id: invoice
+      http: { collection: /api/invoices, item: "/api/invoices/{id}" }
+      storage: { table: invoices, tenant_column: tenant_id }
+    - id: report
+      http: { collection: /api/reports, item: "/api/reports/{id}" }
+      storage: { table: reports, tenant_column: tenant_id }
+    - id: user
+      http: { collection: /api/admin/users, item: "/api/admin/users/{id}" }
+      storage: { table: users, tenant_column: tenant_id }
+    - id: admin_order
+      http: { collection: /api/admin/orders, item: "/api/admin/orders/{id}" }
+      storage: { table: orders, tenant_column: tenant_id }
+    - id: profile
+      http: { collection: /api/me, item: "/api/me/{id}" }
+      storage: { table: users, tenant_column: tenant_id }
