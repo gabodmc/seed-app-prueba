@@ -48,3 +48,4 @@ hace precisa la detección de fugas en el plano de storage.
 | `tenant_b` | `user_bob` (member) | `order_b1` | `invoice_b1` | `report_b1` |
 
 El token bearer es el id del usuario.
+
