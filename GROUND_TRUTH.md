@@ -63,3 +63,13 @@ El token bearer es el id del usuario.
 Esperado del agente: los cuatro aparecen como hallazgos de nivel **herramienta**
 con su métrica citada. Ninguno afecta el ground truth de seguridad (el archivo
 no se importa desde `server.js`).
+
+## Seguridad medible (fase 5.2 — capa herramienta del agente de seguridad)
+
+| ID | Falla plantada | Herramienta |
+|---|---|---|
+| S-001 | Clave de API genérica de alta entropía (falsa) en `src/config.js` — una tipo Stripe real dispara la push protection de GitHub, que es exactamente el punto | gitleaks |
+| S-002 | `lodash@4.17.15` con CVEs HIGH conocidos (package-lock.json) | trivy |
+
+Esperado: ambos como hallazgos nivel **herramienta**, severidad critical/high, sin
+citar jamás el valor del secreto.
