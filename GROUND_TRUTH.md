@@ -48,3 +48,18 @@ hace precisa la detección de fugas en el plano de storage.
 | `tenant_b` | `user_bob` (member) | `order_b1` | `invoice_b1` | `report_b1` |
 
 El token bearer es el id del usuario.
+
+## Calidad (fase 5 — ground truth del agente de calidad)
+
+`src/reports-helper.js` existe para darle al agente de calidad fallas medibles:
+
+| ID | Falla plantada | Herramienta que la mide |
+|---|---|---|
+| Q-001 | `buildMonthlyReport` supera el tope de líneas por función | eslint `max-lines-per-function` |
+| Q-002 | `buildMonthlyReport` supera el tope de complejidad (anidamiento de ifs por estado) | eslint `complexity` / `max-depth` |
+| Q-003 | `buildYearlyReport` duplica el bloque de acumulación de `buildMonthlyReport` | jscpd |
+| Q-004 | El proyecto no tiene script de test | `npm test` → NOTESTS |
+
+Esperado del agente: los cuatro aparecen como hallazgos de nivel **herramienta**
+con su métrica citada. Ninguno afecta el ground truth de seguridad (el archivo
+no se importa desde `server.js`).
