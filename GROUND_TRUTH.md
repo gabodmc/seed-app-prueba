@@ -73,3 +73,15 @@ no se importa desde `server.js`).
 
 Esperado: ambos como hallazgos nivel **herramienta**, severidad critical/high, sin
 citar jamás el valor del secreto.
+
+## Arquitectura y documentación (fase 8)
+
+| ID | Falla plantada | Medición |
+|---|---|---|
+| A-001 | Ciclo de dependencias `reports-helper.js ↔ notifications.js` (estático; el runtime no los carga) | grafo de imports propio |
+| D-001 | El proyecto no tiene README y expone rutas que ninguna doc menciona | chequeos de documentación |
+
+Nota: GROUND_TRUTH.md es un .md y menciona la mayoría de las rutas, así que
+"documenta" casi todo por accidente. D-001 queda garantizado por: README ausente
++ la ruta de salud del servidor, que ningún .md debe nombrar (nombrarla acá
+rompería este ground truth).

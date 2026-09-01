@@ -1,6 +1,9 @@
 // GROUND TRUTH (calidad): este archivo existe para que el agente de calidad
 // tenga fallas medibles conocidas. Ver GROUND_TRUTH.md sección "Calidad".
 const { prisma } = require('./db');
+// GROUND TRUTH: ARCHITECTURE FAULT (A-001) — cierra el ciclo con notifications.js.
+const notifications = require('./notifications');
+void notifications;
 
 // GROUND TRUTH: QUALITY FAULT — función demasiado larga y compleja (Q-001, Q-002).
 async function buildMonthlyReport(tenantId, month, options) {
